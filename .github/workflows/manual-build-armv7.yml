@@ -31,8 +31,12 @@ jobs:
     steps:
       - name: Checkout the repository version ${{ github.event.inputs.version }}
         uses: actions/checkout@v5.0.0
-        with:
-          ref: ${{ github.event.inputs.version }}
+
+      - name: Fetch upstream
+        run: |
+          git remote --verbose 
+          git fetch upstream ${{ github.event.inputs.version }}
+          git switch -c ${{ github.event.inputs.version }} upstream/${{ github.event.inputs.version }}
 
       # TODO: handle translations
 
