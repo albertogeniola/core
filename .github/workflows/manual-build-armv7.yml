@@ -34,7 +34,7 @@ jobs:
 
       - name: Fetch upstream
         run: |
-          git remote --verbose 
+          git remote add upstream https://github.com/home-assistant/core.git
           git fetch upstream ${{ github.event.inputs.version }}
           git switch -c ${{ github.event.inputs.version }} upstream/${{ github.event.inputs.version }}
 
