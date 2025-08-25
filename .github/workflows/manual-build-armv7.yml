@@ -35,7 +35,8 @@ jobs:
       - name: Fetch upstream
         run: |
           git remote add upstream https://github.com/home-assistant/core.git
-          git fetch upstream ${{ github.event.inputs.version }}
+          git fetch upstream
+          git fetch upstream --tags
           git checkout ${{ github.event.inputs.version }}
 
       # TODO: handle translations
