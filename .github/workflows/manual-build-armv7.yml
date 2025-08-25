@@ -51,7 +51,7 @@ jobs:
       - name: Patch build.yaml
         run: |
           rm build.yaml
-          cat << EOF > file.txt
+          cat << EOF > build.yaml
           image: ghcr.io/${{ github.repository_owner }}/armv7-homeassistant
           build_from:
             armv7:${{ github.event.inputs.from_base_image }}
