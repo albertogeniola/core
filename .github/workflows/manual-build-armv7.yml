@@ -56,6 +56,7 @@ jobs:
           build_from:
             armv7:${{ github.event.inputs.from_base_image }}
           EOF
+          cat build.yaml
           
       - name: Build base image
         uses: home-assistant/builder@2025.03.0
