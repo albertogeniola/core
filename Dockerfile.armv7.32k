@@ -1,0 +1,64 @@
+# Tested for 2025.8.3
+ARG BUILD_FROM
+FROM ${BUILD_FROM}
+
+# Synchronize with homeassistant/core.py:async_stop
+ENV \
+    S6_SERVICES_GRACETIME=240000 \
+    UV_SYSTEM_PYTHON=true \
+    UV_NO_CACHE=true
+
+ARG QEMU_CPU
+
+# Home Assistant S6-Overlay
+COPY rootfs /
+
+# Get GO version 1.23 for armv6l
+RUN cd /tmp \
+    && wget -O go.tar.gz https://go.dev/dl/go1.23.12.linux-armv6l.tar.gz\
+    && tar -C /usr/local -xvzf go.tar.gz \
+    && export PATH=$PATH:/usr/local/go/bin \
+    && export GOBIN="$GOPATH/bin"
+
+# Get go2rtc binary
+RUN git clone https://github.com/AlexxIT/go2rtc.git \
+    && cd go2rtc \
+    && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 /usr/local/bin/go build -ldflags "-s -w" -trimpath \
+    && chmod +x ./go2rtc \
+    && cp ./go2rtc /bin/go2rtc \
+    && cd .. \
+    # Verify go2rtc can be executed
+    && go2rtc --version \
+    && rm -R go2rtc
+
+# Install uv
+RUN pip3 install uv==0.8.9
+
+WORKDIR /usr/src
+
+## Setup Home Assistant Core dependencies
+COPY requirements.txt homeassistant/
+COPY homeassistant/package_constraints.txt homeassistant/homeassistant/
+RUN \
+    uv pip install \
+        --no-build \
+        -r homeassistant/requirements.txt
+
+COPY requirements_all.txt home_assistant_frontend-* home_assistant_intents-* homeassistant/
+RUN \
+    if ls homeassistant/home_assistant_*.whl 1> /dev/null 2>&1; then \
+        uv pip install homeassistant/home_assistant_*.whl; \
+    fi \
+    && uv pip install \
+        --no-build \
+        -r homeassistant/requirements_all.txt
+
+## Setup Home Assistant Core
+COPY . homeassistant/
+RUN \
+    uv pip install \
+        -e ./homeassistant \
+    && python3 -m compileall \
+        homeassistant/homeassistant
+
+WORKDIR /config
