@@ -1,7 +1,5 @@
 """Support for fetching WiFi associations through SNMP."""
 
-from __future__ import annotations
-
 import binascii
 import logging
 from typing import TYPE_CHECKING
@@ -146,6 +144,13 @@ class SnmpScanner(DeviceScanner):
         """Return the name of the given device or None if we don't know."""
         # We have no names
         return None
+
+    async def async_get_extra_attributes(self, device: str) -> dict:
+        """Return the extra attributes of the given device or an empty dictionary if we have none."""
+        for client in self.last_results:
+            if client.get("mac") and device == client["mac"]:
+                return {"mac": client["mac"]}
+        return {}
 
     async def _async_update_info(self):
         """Ensure the information from the device is up to date.

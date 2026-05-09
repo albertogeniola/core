@@ -1,7 +1,5 @@
 """Plugin for checking if class is in correct module."""
 
-from __future__ import annotations
-
 from astroid import nodes
 from pylint.checkers import BaseChecker
 from pylint.lint import PyLinter
@@ -85,7 +83,6 @@ _ENTITY_COMPONENTS: set[str] = {platform.value for platform in Platform}.union(
         "alert",
         "automation",
         "counter",
-        "dominos",
         "input_boolean",
         "input_button",
         "input_datetime",

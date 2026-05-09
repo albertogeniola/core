@@ -1,7 +1,5 @@
 """Config flow for Google Generative AI Conversation integration."""
 
-from __future__ import annotations
-
 from collections.abc import Mapping
 from functools import partial
 import logging
@@ -305,10 +303,11 @@ async def google_generative_ai_config_option_schema(
         )
         for api in llm.async_get_apis(hass)
     ]
-    if (suggested_llm_apis := options.get(CONF_LLM_HASS_API)) and isinstance(
-        suggested_llm_apis, str
-    ):
-        suggested_llm_apis = [suggested_llm_apis]
+    if suggested_llm_apis := options.get(CONF_LLM_HASS_API):
+        if isinstance(suggested_llm_apis, str):
+            suggested_llm_apis = [suggested_llm_apis]
+        known_apis = {api.id for api in llm.async_get_apis(hass)}
+        suggested_llm_apis = [api for api in suggested_llm_apis if api in known_apis]
 
     if is_new:
         if CONF_NAME in options:

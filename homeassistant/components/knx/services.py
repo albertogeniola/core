@@ -1,7 +1,5 @@
 """KNX integration services."""
 
-from __future__ import annotations
-
 import logging
 from typing import TYPE_CHECKING
 
@@ -39,6 +37,10 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+_DESCRIPTION_PLACEHOLDERS = {
+    "sensor_value_types_url": "https://www.home-assistant.io/integrations/knx/#value-types"
+}
+
 
 @callback
 def async_setup_services(hass: HomeAssistant) -> None:
@@ -48,6 +50,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_KNX_SEND,
         service_send_to_knx_bus,
         schema=SERVICE_KNX_SEND_SCHEMA,
+        description_placeholders=_DESCRIPTION_PLACEHOLDERS,
     )
 
     hass.services.async_register(
@@ -63,6 +66,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_KNX_EVENT_REGISTER,
         service_event_register_modify,
         schema=SERVICE_KNX_EVENT_REGISTER_SCHEMA,
+        description_placeholders=_DESCRIPTION_PLACEHOLDERS,
     )
 
     async_register_admin_service(
@@ -71,6 +75,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_KNX_EXPOSURE_REGISTER,
         service_exposure_register_modify,
         schema=SERVICE_KNX_EXPOSURE_REGISTER_SCHEMA,
+        description_placeholders=_DESCRIPTION_PLACEHOLDERS,
     )
 
     async_register_admin_service(
@@ -186,7 +191,7 @@ async def service_exposure_register_modify(call: ServiceCall) -> None:
                 " for '%s' - %s"
             ),
             group_address,
-            replaced_exposure.device.name,
+            replaced_exposure.name,
         )
         replaced_exposure.async_remove()
     exposure = create_knx_exposure(knx_module.hass, knx_module.xknx, call.data)
@@ -194,7 +199,7 @@ async def service_exposure_register_modify(call: ServiceCall) -> None:
     _LOGGER.debug(
         "Service exposure_register registered exposure for '%s' - %s",
         group_address,
-        exposure.device.name,
+        exposure.name,
     )
 
 

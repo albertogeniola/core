@@ -1,7 +1,5 @@
 """Diagnostics support for the KNX integration."""
 
-from __future__ import annotations
-
 from typing import Any
 
 import voluptuous as vol
@@ -52,8 +50,10 @@ async def async_get_config_entry_diagnostics(
     try:
         CONFIG_SCHEMA(raw_config)
     except vol.Invalid as ex:
-        diag["configuration_error"] = str(ex)
+        diag["yaml_configuration_error"] = str(ex)
     else:
-        diag["configuration_error"] = None
+        diag["yaml_configuration_error"] = None
+
+    diag["config_store"] = knx_module.config_store.data
 
     return diag

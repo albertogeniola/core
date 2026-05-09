@@ -1,7 +1,5 @@
 """DataUpdateCoordinator for the Squeezebox integration."""
 
-from __future__ import annotations
-
 from asyncio import timeout
 from collections.abc import Callable
 from datetime import timedelta
@@ -117,7 +115,9 @@ class SqueezeBoxPlayerUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                 # start listening for restored players
                 self._remove_dispatcher = async_dispatcher_connect(
-                    self.hass, SIGNAL_PLAYER_REDISCOVERED, self.rediscovered
+                    self.hass,
+                    SIGNAL_PLAYER_REDISCOVERED + self.config_entry.entry_id,
+                    self.rediscovered,
                 )
 
         alarm_dict: dict[str, Alarm] = (
@@ -136,3 +136,10 @@ class SqueezeBoxPlayerUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.info("Player %s is available again", self.name)
             if self._remove_dispatcher:
                 self._remove_dispatcher()
+
+    @callback
+    def async_shutdown_dispatcher(self) -> None:
+        """Close down the dispatcher."""
+        if self._remove_dispatcher:
+            self._remove_dispatcher()
+            self._remove_dispatcher = None

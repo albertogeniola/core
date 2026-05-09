@@ -1,7 +1,5 @@
 """Support for HERE travel time sensors."""
 
-from __future__ import annotations
-
 from collections.abc import Mapping
 from datetime import timedelta
 from typing import Any
@@ -44,7 +42,7 @@ from .coordinator import (
     HERETransitDataUpdateCoordinator,
 )
 
-SCAN_INTERVAL = timedelta(minutes=5)
+SCAN_INTERVAL = timedelta(minutes=30)
 
 
 def sensor_descriptions(travel_mode: str) -> tuple[SensorEntityDescription, ...]:

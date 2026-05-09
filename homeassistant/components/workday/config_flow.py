@@ -1,7 +1,5 @@
 """Adds config flow for Workday integration."""
 
-from __future__ import annotations
-
 from functools import partial
 from typing import Any
 
@@ -155,6 +153,7 @@ def validate_custom_dates(user_input: dict[str, Any]) -> None:
             subdiv=province,
             years=year,
             language=language,
+            categories=[PUBLIC, *user_input.get(CONF_CATEGORY, [])],
         )
 
     else:

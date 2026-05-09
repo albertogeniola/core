@@ -1,7 +1,5 @@
 """Support for buttons which integrates with other components."""
 
-from __future__ import annotations
-
 import logging
 from typing import TYPE_CHECKING
 
@@ -25,23 +23,25 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .const import CONF_PRESS, DOMAIN
 from .helpers import async_setup_template_entry, async_setup_template_platform
-from .template_entity import (
+from .schemas import (
     TEMPLATE_ENTITY_COMMON_CONFIG_ENTRY_SCHEMA,
-    TemplateEntity,
     make_template_entity_common_modern_schema,
 )
+from .template_entity import TemplateEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = "Template Button"
 DEFAULT_OPTIMISTIC = False
 
+SCRIPT_FIELDS = (CONF_PRESS,)
+
 BUTTON_YAML_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_PRESS): cv.SCRIPT_SCHEMA,
         vol.Optional(CONF_DEVICE_CLASS): DEVICE_CLASSES_SCHEMA,
     }
-).extend(make_template_entity_common_modern_schema(DEFAULT_NAME).schema)
+).extend(make_template_entity_common_modern_schema(BUTTON_DOMAIN, DEFAULT_NAME).schema)
 
 BUTTON_CONFIG_ENTRY_SCHEMA = vol.Schema(
     {
@@ -66,6 +66,7 @@ async def async_setup_platform(
         None,
         async_add_entities,
         discovery_info,
+        script_options=SCRIPT_FIELDS,
     )
 
 
@@ -81,6 +82,7 @@ async def async_setup_entry(
         async_add_entities,
         StateButtonEntity,
         BUTTON_CONFIG_ENTRY_SCHEMA,
+        script_options=SCRIPT_FIELDS,
     )
 
 

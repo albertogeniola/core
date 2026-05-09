@@ -1,7 +1,5 @@
 """Config flow for Coinbase integration."""
 
-from __future__ import annotations
-
 from collections.abc import Mapping
 import logging
 from typing import Any
@@ -166,6 +164,7 @@ class CoinbaseConfigFlow(ConfigFlow, domain=DOMAIN):
                 data_schema=STEP_USER_DATA_SCHEMA,
                 description_placeholders={
                     "account_name": self.reauth_entry.title,
+                    "developer_url": "https://www.coinbase.com/developer-platform",
                 },
                 errors=errors,
             )
@@ -195,6 +194,7 @@ class CoinbaseConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=STEP_USER_DATA_SCHEMA,
             description_placeholders={
                 "account_name": self.reauth_entry.title,
+                "developer_url": "https://www.coinbase.com/developer-platform",
             },
             errors=errors,
         )

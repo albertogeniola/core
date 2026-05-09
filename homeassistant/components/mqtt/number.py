@@ -1,7 +1,5 @@
 """Configure number in a device through MQTT topic."""
 
-from __future__ import annotations
-
 from collections.abc import Callable
 import logging
 
@@ -37,8 +35,12 @@ from .config import MQTT_RW_SCHEMA
 from .const import (
     CONF_COMMAND_TEMPLATE,
     CONF_COMMAND_TOPIC,
+    CONF_MAX,
+    CONF_MIN,
     CONF_PAYLOAD_RESET,
     CONF_STATE_TOPIC,
+    CONF_STEP,
+    DEFAULT_PAYLOAD_RESET,
 )
 from .entity import MqttEntity, async_setup_entity_entry_helper
 from .models import (
@@ -53,12 +55,7 @@ _LOGGER = logging.getLogger(__name__)
 
 PARALLEL_UPDATES = 0
 
-CONF_MIN = "min"
-CONF_MAX = "max"
-CONF_STEP = "step"
-
 DEFAULT_NAME = "MQTT Number"
-DEFAULT_PAYLOAD_RESET = "None"
 
 MQTT_NUMBER_ATTRIBUTES_BLOCKED = frozenset(
     {

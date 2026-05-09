@@ -1,7 +1,5 @@
 """Climate platform for Tesla Fleet integration."""
 
-from __future__ import annotations
-
 from itertools import chain
 from typing import Any, cast
 
@@ -79,7 +77,7 @@ class TeslaFleetClimateEntity(TeslaFleetVehicleEntity, ClimateEntity):
         self,
         data: TeslaFleetVehicleData,
         side: TeslaFleetClimateSide,
-        scopes: Scope,
+        scopes: list[Scope],
     ) -> None:
         """Initialize the climate."""
 
@@ -219,7 +217,7 @@ class TeslaFleetCabinOverheatProtectionEntity(TeslaFleetVehicleEntity, ClimateEn
     def __init__(
         self,
         data: TeslaFleetVehicleData,
-        scopes: Scope,
+        scopes: list[Scope],
     ) -> None:
         """Initialize the cabin overheat climate entity."""
 

@@ -1,7 +1,5 @@
 """Config flow for Alexa Devices integration."""
 
-from __future__ import annotations
-
 from collections.abc import Mapping
 from typing import Any
 
@@ -45,14 +43,14 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         data[CONF_PASSWORD],
     )
 
-    return await api.login_mode_interactive(data[CONF_CODE])
+    return await api.login.login_mode_interactive(data[CONF_CODE])
 
 
 class AmazonDevicesConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Alexa Devices."""
 
     VERSION = 1
-    MINOR_VERSION = 1
+    MINOR_VERSION = 3
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -107,7 +105,9 @@ class AmazonDevicesConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             try:
-                await validate_input(self.hass, {**reauth_entry.data, **user_input})
+                data = await validate_input(
+                    self.hass, {**reauth_entry.data, **user_input}
+                )
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except CannotAuthenticate:
@@ -119,8 +119,9 @@ class AmazonDevicesConfigFlow(ConfigFlow, domain=DOMAIN):
                     reauth_entry,
                     data={
                         CONF_USERNAME: entry_data[CONF_USERNAME],
-                        CONF_PASSWORD: entry_data[CONF_PASSWORD],
+                        CONF_PASSWORD: user_input[CONF_PASSWORD],
                         CONF_CODE: user_input[CONF_CODE],
+                        CONF_LOGIN_DATA: data,
                     },
                 )
 

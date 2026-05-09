@@ -1,7 +1,5 @@
 """Config flow for Ping (ICMP) integration."""
 
-from __future__ import annotations
-
 import logging
 from typing import Any
 
@@ -37,6 +35,7 @@ class PingConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Ping."""
 
     VERSION = 1
+    MINOR_VERSION = 2
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

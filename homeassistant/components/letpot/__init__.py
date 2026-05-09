@@ -1,7 +1,5 @@
 """The LetPot integration."""
 
-from __future__ import annotations
-
 import asyncio
 
 from letpot.client import LetPotClient
@@ -25,6 +23,7 @@ from .coordinator import LetPotConfigEntry, LetPotDeviceCoordinator
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
+    Platform.NUMBER,
     Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,

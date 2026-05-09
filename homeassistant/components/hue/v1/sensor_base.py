@@ -1,7 +1,5 @@
 """Support for the Philips Hue sensors as a platform."""
 
-from __future__ import annotations
-
 import asyncio
 from datetime import timedelta
 import logging
@@ -181,7 +179,7 @@ class GenericHueSensor(GenericHueDevice, entity.Entity):  # pylint: disable=hass
         )
 
     @property
-    def state_class(self):
+    def state_class(self) -> SensorStateClass:
         """Return the state class of this entity, from STATE_CLASSES, if any."""
         return SensorStateClass.MEASUREMENT
 
@@ -206,6 +204,6 @@ class GenericZLLSensor(GenericHueSensor):
     """Representation of a Hue-brand, physical sensor."""
 
     @property
-    def extra_state_attributes(self):
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the device state attributes."""
         return {"battery_level": self.sensor.battery}

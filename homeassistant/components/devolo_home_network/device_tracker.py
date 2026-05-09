@@ -1,7 +1,5 @@
 """Platform for device tracker integration."""
 
-from __future__ import annotations
-
 from devolo_plc_api.device import Device
 from devolo_plc_api.device_api import ConnectedStationInfo
 
@@ -80,8 +78,7 @@ async def async_setup_entry(
     )
 
 
-# The pylint disable is needed because of https://github.com/pylint-dev/pylint/issues/9138
-class DevoloScannerEntity(  # pylint: disable=hass-enforce-class-module
+class DevoloScannerEntity(
     CoordinatorEntity[DevoloDataUpdateCoordinator[dict[str, ConnectedStationInfo]]],
     ScannerEntity,
 ):

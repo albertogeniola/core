@@ -1,7 +1,5 @@
 """Home Assistant extension for Syrupy."""
 
-from __future__ import annotations
-
 from contextlib import suppress
 import dataclasses
 from enum import IntFlag
@@ -175,7 +173,6 @@ class HomeAssistantSnapshotSerializer(AmberDataSerializer):
         serialized.pop("_cache")
         # This can be removed when suggested_area is removed from DeviceEntry
         serialized.pop("_suggested_area")
-        serialized.pop("is_new")
         return cls._remove_created_and_modified_at(serialized)
 
     @classmethod
@@ -203,7 +200,10 @@ class HomeAssistantSnapshotSerializer(AmberDataSerializer):
             }
         )
         serialized.pop("categories")
+        serialized.pop("compat_aliases")
+        serialized.pop("original_name_unprefixed")
         serialized.pop("_cache")
+        serialized["aliases"] = er._serialize_aliases(serialized["aliases"])
         return cls._remove_created_and_modified_at(serialized)
 
     @classmethod

@@ -1,7 +1,5 @@
 """The PlayStation Network integration."""
 
-from __future__ import annotations
-
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
@@ -9,6 +7,7 @@ from .const import CONF_NPSSO
 from .coordinator import (
     PlaystationNetworkConfigEntry,
     PlaystationNetworkFriendDataCoordinator,
+    PlaystationNetworkFriendlistCoordinator,
     PlaystationNetworkGroupsUpdateCoordinator,
     PlaystationNetworkRuntimeData,
     PlaystationNetworkTrophyTitlesCoordinator,
@@ -40,6 +39,8 @@ async def async_setup_entry(
     groups = PlaystationNetworkGroupsUpdateCoordinator(hass, psn, entry)
     await groups.async_config_entry_first_refresh()
 
+    friends_list = PlaystationNetworkFriendlistCoordinator(hass, psn, entry)
+
     friends = {}
 
     for subentry_id, subentry in entry.subentries.items():
@@ -50,7 +51,7 @@ async def async_setup_entry(
         friends[subentry_id] = friend_coordinator
 
     entry.runtime_data = PlaystationNetworkRuntimeData(
-        coordinator, trophy_titles, groups, friends
+        coordinator, trophy_titles, groups, friends, friends_list
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

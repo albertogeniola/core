@@ -20,6 +20,7 @@ DATA_DEVICES = "devices"
 DATA_STORE = "store"
 DATA_NOTIFY = "notify"
 DATA_PUSH_CHANNEL = "push_channel"
+DATA_PENDING_UPDATES = "pending_updates"
 
 ATTR_APP_DATA = "app_data"
 ATTR_APP_ID = "app_id"
@@ -81,6 +82,7 @@ ATTR_SENSOR_UOM = "unit_of_measurement"
 
 SIGNAL_SENSOR_UPDATE = f"{DOMAIN}_sensor_update"
 SIGNAL_LOCATION_UPDATE = DOMAIN + "_location_update_{}"
+SIGNAL_RECORD_NOTIFICATION = f"{DOMAIN}_record_notification"
 
 ATTR_CAMERA_ENTITY_ID = "camera_entity_id"
 
@@ -94,3 +96,5 @@ SCHEMA_APP_DATA = vol.Schema(
     },
     extra=vol.ALLOW_EXTRA,
 )
+
+SENSOR_TYPES = (ATTR_SENSOR_TYPE_BINARY_SENSOR, ATTR_SENSOR_TYPE_SENSOR)

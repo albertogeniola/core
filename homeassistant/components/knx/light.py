@@ -1,7 +1,5 @@
 """Support for KNX light entities."""
 
-from __future__ import annotations
-
 from typing import Any, cast
 
 from propcache.api import cached_property
@@ -285,13 +283,19 @@ def _create_ui_light(xknx: XKNX, knx_config: ConfigType, name: str) -> XknxLight
         group_address_switch_green_state=conf.get_state_and_passive(
             CONF_COLOR, CONF_GA_GREEN_SWITCH
         ),
-        group_address_brightness_green=conf.get_write(CONF_GA_GREEN_BRIGHTNESS),
+        group_address_brightness_green=conf.get_write(
+            CONF_COLOR, CONF_GA_GREEN_BRIGHTNESS
+        ),
         group_address_brightness_green_state=conf.get_state_and_passive(
             CONF_COLOR, CONF_GA_GREEN_BRIGHTNESS
         ),
-        group_address_switch_blue=conf.get_write(CONF_GA_BLUE_SWITCH),
-        group_address_switch_blue_state=conf.get_state_and_passive(CONF_GA_BLUE_SWITCH),
-        group_address_brightness_blue=conf.get_write(CONF_GA_BLUE_BRIGHTNESS),
+        group_address_switch_blue=conf.get_write(CONF_COLOR, CONF_GA_BLUE_SWITCH),
+        group_address_switch_blue_state=conf.get_state_and_passive(
+            CONF_COLOR, CONF_GA_BLUE_SWITCH
+        ),
+        group_address_brightness_blue=conf.get_write(
+            CONF_COLOR, CONF_GA_BLUE_BRIGHTNESS
+        ),
         group_address_brightness_blue_state=conf.get_state_and_passive(
             CONF_COLOR, CONF_GA_BLUE_BRIGHTNESS
         ),
@@ -552,15 +556,16 @@ class KnxYamlLight(_KnxLight, KnxYamlEntity):
 
     def __init__(self, knx_module: KNXModule, config: ConfigType) -> None:
         """Initialize of KNX light."""
+        self._device = _create_yaml_light(knx_module.xknx, config)
         super().__init__(
             knx_module=knx_module,
-            device=_create_yaml_light(knx_module.xknx, config),
+            unique_id=self._device_unique_id(),
+            name=config[CONF_NAME],
+            entity_category=config.get(CONF_ENTITY_CATEGORY),
         )
         self._attr_color_mode = next(iter(self.supported_color_modes))
         self._attr_max_color_temp_kelvin: int = config[LightSchema.CONF_MAX_KELVIN]
         self._attr_min_color_temp_kelvin: int = config[LightSchema.CONF_MIN_KELVIN]
-        self._attr_entity_category = config.get(CONF_ENTITY_CATEGORY)
-        self._attr_unique_id = self._device_unique_id()
 
     def _device_unique_id(self) -> str:
         """Return unique id for this device."""

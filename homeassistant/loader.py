@@ -4,8 +4,6 @@ This module has quite some complex parts. I have tried to add as much
 documentation as possible to keep it understandable.
 """
 
-from __future__ import annotations
-
 import asyncio
 from collections.abc import Callable, Iterable
 from contextlib import suppress
@@ -120,6 +118,15 @@ BLOCKED_CUSTOM_INTEGRATIONS: dict[str, BlockedIntegration] = {
     # https://github.com/enkama/hass-variables/issues/120
     "variable": BlockedIntegration(
         AwesomeVersion("3.4.4"), "prevents recorder from working"
+    ),
+    # Added in 2025.10.0 because of
+    # https://github.com/frenck/spook/issues/1066
+    "spook": BlockedIntegration(AwesomeVersion("4.0.0"), "breaks the template engine"),
+    # Added in 2025.12.1 because of
+    # https://github.com/JaccoR/hass-entso-e/issues/263
+    "entsoe": BlockedIntegration(
+        AwesomeVersion("0.7.1"),
+        "crashes Home Assistant when it can't connect to the API",
     ),
 }
 
@@ -263,6 +270,7 @@ class Manifest(TypedDict, total=False):
     loggers: list[str]
     import_executor: bool
     single_config_entry: bool
+    preview_features: dict[str, dict[str, str]]
 
 
 def async_setup(hass: HomeAssistant) -> None:
@@ -757,6 +765,7 @@ class Integration:
         self.pkg_path = pkg_path
         self.file_path = file_path
         self.manifest = manifest
+        self.logger = logging.getLogger(pkg_path)
         manifest["is_built_in"] = self.is_built_in
         manifest["overwrites_built_in"] = self.overwrites_built_in
 
@@ -873,6 +882,11 @@ class Integration:
         return "translations" in self._top_level_files
 
     @cached_property
+    def has_branding(self) -> bool:
+        """Return if the integration has brand assets."""
+        return "brand" in self._top_level_files
+
+    @cached_property
     def has_triggers(self) -> bool:
         """Return if the integration has triggers."""
         return "triggers.yaml" in self._top_level_files
@@ -896,6 +910,11 @@ class Integration:
     def bluetooth(self) -> list[dict[str, str | int]] | None:
         """Return Integration bluetooth entries."""
         return self.manifest.get("bluetooth")
+
+    @property
+    def preview_features(self) -> dict[str, dict[str, str]] | None:
+        """Return Integration preview features entries."""
+        return self.manifest.get("preview_features")
 
     @property
     def dhcp(self) -> list[dict[str, str | bool]] | None:

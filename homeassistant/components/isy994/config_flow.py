@@ -1,7 +1,5 @@
 """Config flow for Universal Devices ISY/IoX integration."""
 
-from __future__ import annotations
-
 import asyncio
 from collections.abc import Mapping
 import logging
@@ -177,6 +175,9 @@ class Isy994ConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=_data_schema(self.discovered_conf),
             errors=errors,
+            description_placeholders={
+                "sample_ip": "http://192.168.10.100:80",
+            },
         )
 
     async def _async_set_unique_id_or_update(
@@ -302,7 +303,10 @@ class Isy994ConfigFlow(ConfigFlow, domain=DOMAIN):
             CONF_HOST: existing_data[CONF_HOST],
         }
         return self.async_show_form(
-            description_placeholders={CONF_HOST: existing_data[CONF_HOST]},
+            description_placeholders={
+                CONF_HOST: existing_data[CONF_HOST],
+                "sample_ip": "http://192.168.10.100:80",
+            },
             step_id="reauth_confirm",
             data_schema=vol.Schema(
                 {
@@ -347,7 +351,13 @@ class OptionsFlowHandler(OptionsFlowWithReload):
             }
         )
 
-        return self.async_show_form(step_id="init", data_schema=options_schema)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=options_schema,
+            description_placeholders={
+                "sample_ip": "http://192.168.10.100:80",
+            },
+        )
 
 
 class InvalidHost(HomeAssistantError):

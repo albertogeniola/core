@@ -12,8 +12,7 @@ async def test_zone_raises(hass: HomeAssistant) -> None:
     """Test that zone raises ConditionError on errors."""
     config = {
         "condition": "zone",
-        "entity_id": "device_tracker.cat",
-        "zone": "zone.home",
+        "options": {"entity_id": "device_tracker.cat", "zone": "zone.home"},
     }
     config = cv.CONDITION_SCHEMA(config)
     config = await condition.async_validate_condition_config(hass, config)
@@ -23,7 +22,7 @@ async def test_zone_raises(hass: HomeAssistant) -> None:
         zone_condition.zone(hass, zone_ent=None, entity="sensor.any")
 
     with pytest.raises(ConditionError, match="unknown zone"):
-        test(hass)
+        test.async_check()
 
     hass.states.async_set(
         "zone.home",
@@ -35,7 +34,7 @@ async def test_zone_raises(hass: HomeAssistant) -> None:
         zone_condition.zone(hass, zone_ent="zone.home", entity=None)
 
     with pytest.raises(ConditionError, match="unknown entity"):
-        test(hass)
+        test.async_check()
 
     hass.states.async_set(
         "device_tracker.cat",
@@ -44,7 +43,7 @@ async def test_zone_raises(hass: HomeAssistant) -> None:
     )
 
     with pytest.raises(ConditionError, match="latitude"):
-        test(hass)
+        test.async_check()
 
     hass.states.async_set(
         "device_tracker.cat",
@@ -53,7 +52,7 @@ async def test_zone_raises(hass: HomeAssistant) -> None:
     )
 
     with pytest.raises(ConditionError, match="longitude"):
-        test(hass)
+        test.async_check()
 
     hass.states.async_set(
         "device_tracker.cat",
@@ -62,22 +61,24 @@ async def test_zone_raises(hass: HomeAssistant) -> None:
     )
 
     # All okay, now test multiple failed conditions
-    assert test(hass)
+    assert test.async_check()
 
     config = {
         "condition": "zone",
-        "entity_id": ["device_tracker.cat", "device_tracker.dog"],
-        "zone": ["zone.home", "zone.work"],
+        "options": {
+            "entity_id": ["device_tracker.cat", "device_tracker.dog"],
+            "zone": ["zone.home", "zone.work"],
+        },
     }
     config = cv.CONDITION_SCHEMA(config)
     config = await condition.async_validate_condition_config(hass, config)
     test = await condition.async_from_config(hass, config)
 
     with pytest.raises(ConditionError, match="dog"):
-        test(hass)
+        test.async_check()
 
     with pytest.raises(ConditionError, match="work"):
-        test(hass)
+        test.async_check()
 
     hass.states.async_set(
         "zone.work",
@@ -91,7 +92,7 @@ async def test_zone_raises(hass: HomeAssistant) -> None:
         {"friendly_name": "dog", "latitude": 20.1, "longitude": 10.1},
     )
 
-    assert test(hass)
+    assert test.async_check()
 
 
 async def test_zone_multiple_entities(hass: HomeAssistant) -> None:
@@ -102,8 +103,10 @@ async def test_zone_multiple_entities(hass: HomeAssistant) -> None:
             {
                 "alias": "Zone Condition",
                 "condition": "zone",
-                "entity_id": ["device_tracker.person_1", "device_tracker.person_2"],
-                "zone": "zone.home",
+                "options": {
+                    "entity_id": ["device_tracker.person_1", "device_tracker.person_2"],
+                    "zone": "zone.home",
+                },
             },
         ],
     }
@@ -127,7 +130,7 @@ async def test_zone_multiple_entities(hass: HomeAssistant) -> None:
         "home",
         {"friendly_name": "person_2", "latitude": 2.1, "longitude": 1.1},
     )
-    assert test(hass)
+    assert test.async_check()
 
     hass.states.async_set(
         "device_tracker.person_1",
@@ -139,7 +142,7 @@ async def test_zone_multiple_entities(hass: HomeAssistant) -> None:
         "home",
         {"friendly_name": "person_2", "latitude": 2.1, "longitude": 1.1},
     )
-    assert not test(hass)
+    assert not test.async_check()
 
     hass.states.async_set(
         "device_tracker.person_1",
@@ -151,7 +154,7 @@ async def test_zone_multiple_entities(hass: HomeAssistant) -> None:
         "home",
         {"friendly_name": "person_2", "latitude": 20.1, "longitude": 10.1},
     )
-    assert not test(hass)
+    assert not test.async_check()
 
 
 async def test_multiple_zones(hass: HomeAssistant) -> None:
@@ -161,8 +164,10 @@ async def test_multiple_zones(hass: HomeAssistant) -> None:
         "conditions": [
             {
                 "condition": "zone",
-                "entity_id": "device_tracker.person",
-                "zone": ["zone.home", "zone.work"],
+                "options": {
+                    "entity_id": "device_tracker.person",
+                    "zone": ["zone.home", "zone.work"],
+                },
             },
         ],
     }
@@ -186,18 +191,18 @@ async def test_multiple_zones(hass: HomeAssistant) -> None:
         "home",
         {"friendly_name": "person", "latitude": 2.1, "longitude": 1.1},
     )
-    assert test(hass)
+    assert test.async_check()
 
     hass.states.async_set(
         "device_tracker.person",
         "home",
         {"friendly_name": "person", "latitude": 20.1, "longitude": 10.1},
     )
-    assert test(hass)
+    assert test.async_check()
 
     hass.states.async_set(
         "device_tracker.person",
         "home",
         {"friendly_name": "person", "latitude": 50.1, "longitude": 20.1},
     )
-    assert not test(hass)
+    assert not test.async_check()

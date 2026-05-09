@@ -1,7 +1,5 @@
 """Binary sensor platform for Habitica integration."""
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
@@ -9,7 +7,6 @@ from enum import StrEnum
 from habiticalib import ContentData, UserData
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
@@ -108,7 +105,6 @@ class HabiticaPartyBinarySensorEntity(HabiticaPartyBase, BinarySensorEntity):
     entity_description = BinarySensorEntityDescription(
         key=HabiticaBinarySensor.QUEST_RUNNING,
         translation_key=HabiticaBinarySensor.QUEST_RUNNING,
-        device_class=BinarySensorDeviceClass.RUNNING,
     )
 
     def __init__(
@@ -123,4 +119,4 @@ class HabiticaPartyBinarySensorEntity(HabiticaPartyBase, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """If the binary sensor is on."""
-        return self.coordinator.data.quest.active
+        return self.coordinator.data.party.quest.active

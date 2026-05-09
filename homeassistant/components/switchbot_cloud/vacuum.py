@@ -17,13 +17,11 @@ from homeassistant.components.vacuum import (
     VacuumActivity,
     VacuumEntityFeature,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import SwitchbotCloudData
+from . import SwitchbotCloudConfigEntry
 from .const import (
-    DOMAIN,
     VACUUM_FAN_SPEED_MAX,
     VACUUM_FAN_SPEED_QUIET,
     VACUUM_FAN_SPEED_STANDARD,
@@ -35,11 +33,11 @@ from .entity import SwitchBotCloudEntity
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config: ConfigEntry,
+    config: SwitchbotCloudConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up SwitchBot Cloud entry."""
-    data: SwitchbotCloudData = hass.data[DOMAIN][config.entry_id]
+    data = config.runtime_data
     async_add_entities(
         _async_make_entity(data.api, device, coordinator)
         for device, coordinator in data.devices.vacuums
@@ -129,8 +127,8 @@ class SwitchBotCloudVacuum(SwitchBotCloudEntity, StateVacuumEntity):
             self._attr_fan_speed = VACUUM_FAN_SPEED_QUIET
 
 
-class SwitchBotCloudVacuumK20PlusPro(SwitchBotCloudVacuum):
-    """Representation of a SwitchBot K20+ Pro."""
+class SwitchBotCloudVacuumV2(SwitchBotCloudVacuum):
+    """Representation of a SwitchBot K20+ Pro & Robot Vacuum Cleaner K11 Plus."""
 
     async def async_set_fan_speed(self, fan_speed: str, **kwargs: Any) -> None:
         """Set fan speed."""
@@ -167,8 +165,7 @@ class SwitchBotCloudVacuumK20PlusPro(SwitchBotCloudVacuum):
             parameters={
                 "action": VacuumCleanMode.SWEEP.value,
                 "param": {
-                    "fanLevel": int(fan_level if fan_level else VACUUM_FAN_SPEED_QUIET)
-                    + 1,
+                    "fanLevel": int(fan_level or VACUUM_FAN_SPEED_QUIET) + 1,
                     "times": 1,
                 },
             },
@@ -176,7 +173,7 @@ class SwitchBotCloudVacuumK20PlusPro(SwitchBotCloudVacuum):
         await self.coordinator.async_request_refresh()
 
 
-class SwitchBotCloudVacuumK10PlusProCombo(SwitchBotCloudVacuumK20PlusPro):
+class SwitchBotCloudVacuumK10PlusProCombo(SwitchBotCloudVacuumV2):
     """Representation of a SwitchBot vacuum K10+ Pro Combo."""
 
     async def async_set_fan_speed(self, fan_speed: str, **kwargs: Any) -> None:
@@ -194,7 +191,7 @@ class SwitchBotCloudVacuumK10PlusProCombo(SwitchBotCloudVacuumK20PlusPro):
         await self.coordinator.async_request_refresh()
 
 
-class SwitchBotCloudVacuumV3(SwitchBotCloudVacuumK20PlusPro):
+class SwitchBotCloudVacuumV3(SwitchBotCloudVacuumV2):
     """Representation of a SwitchBot vacuum Robot Vacuum Cleaner S10 & S20."""
 
     async def async_set_fan_speed(self, fan_speed: str, **kwargs: Any) -> None:
@@ -222,7 +219,7 @@ class SwitchBotCloudVacuumV3(SwitchBotCloudVacuumK20PlusPro):
             parameters={
                 "action": VacuumCleanMode.SWEEP.value,
                 "param": {
-                    "fanLevel": int(fan_level if fan_level else VACUUM_FAN_SPEED_QUIET),
+                    "fanLevel": int(fan_level or VACUUM_FAN_SPEED_QUIET),
                     "waterLevel": 1,
                     "times": 1,
                 },
@@ -236,16 +233,18 @@ def _async_make_entity(
     api: SwitchBotAPI, device: Device | Remote, coordinator: SwitchBotCoordinator
 ) -> (
     SwitchBotCloudVacuum
-    | SwitchBotCloudVacuumK20PlusPro
+    | SwitchBotCloudVacuumV2
     | SwitchBotCloudVacuumV3
     | SwitchBotCloudVacuumK10PlusProCombo
 ):
     """Make a SwitchBotCloudVacuum."""
-    if device.device_type in VacuumCleanerV2Commands.get_supported_devices():
-        if device.device_type == "K20+ Pro":
-            return SwitchBotCloudVacuumK20PlusPro(api, device, coordinator)
+    if device.device_type in ["K20+ Pro", "Robot Vacuum Cleaner K11 Plus"]:
+        return SwitchBotCloudVacuumV2(api, device, coordinator)
+    if device.device_type == "Robot Vacuum Cleaner K10+ Pro Combo":
         return SwitchBotCloudVacuumK10PlusProCombo(api, device, coordinator)
-
-    if device.device_type in VacuumCleanerV3Commands.get_supported_devices():
+    if (
+        device.device_type in VacuumCleanerV3Commands.get_supported_devices()
+        or device.device_type == "Robot Vacuum Cleaner S20"
+    ):
         return SwitchBotCloudVacuumV3(api, device, coordinator)
     return SwitchBotCloudVacuum(api, device, coordinator)

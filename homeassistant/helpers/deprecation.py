@@ -1,7 +1,5 @@
 """Deprecation helpers for Home Assistant."""
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from contextlib import suppress
 from enum import EnumType, IntEnum, IntFlag, StrEnum, _EnumDict
@@ -136,6 +134,41 @@ def deprecated_function[**_P, _R](
         return deprecated_func
 
     return deprecated_decorator
+
+
+def deprecated_hass_argument[**_P, _T](
+    breaks_in_ha_version: str | None = None,
+) -> Callable[[Callable[_P, _T]], Callable[_P, _T]]:
+    """Decorate function to indicate that first argument hass will be ignored."""
+
+    def _decorator(func: Callable[_P, _T]) -> Callable[_P, _T]:
+        @functools.wraps(func)
+        def _inner(*args: _P.args, **kwargs: _P.kwargs) -> _T:
+            from homeassistant.core import HomeAssistant  # noqa: PLC0415
+
+            in_arg = len(args) > 0 and isinstance(args[0], HomeAssistant)
+            in_kwarg = "hass" in kwargs and isinstance(kwargs["hass"], HomeAssistant)
+
+            if in_arg or in_kwarg:
+                _print_deprecation_warning_internal(
+                    "hass",
+                    func.__module__,
+                    f"{func.__name__} without hass argument",
+                    "argument",
+                    f"passed to {func.__name__}",
+                    breaks_in_ha_version,
+                    log_when_no_integration_is_found=True,
+                )
+                if in_arg:
+                    args = args[1:]  # type: ignore[assignment]
+                if in_kwarg:
+                    kwargs.pop("hass")
+
+            return func(*args, **kwargs)
+
+        return _inner
+
+    return _decorator
 
 
 def _print_deprecation_warning(

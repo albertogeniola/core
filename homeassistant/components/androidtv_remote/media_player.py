@@ -1,7 +1,5 @@
 """Media player support for Android TV Remote."""
 
-from __future__ import annotations
-
 import asyncio
 from typing import Any
 
@@ -175,7 +173,11 @@ class AndroidTVRemoteMediaPlayerEntity(AndroidTVRemoteBaseEntity, MediaPlayerEnt
         """Play a piece of media."""
         if media_type == MediaType.CHANNEL:
             if not media_id.isnumeric():
-                raise ValueError(f"Channel must be numeric: {media_id}")
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="invalid_channel",
+                    translation_placeholders={"media_id": media_id},
+                )
             if self._channel_set_task:
                 self._channel_set_task.cancel()
             self._channel_set_task = asyncio.create_task(
@@ -188,7 +190,11 @@ class AndroidTVRemoteMediaPlayerEntity(AndroidTVRemoteBaseEntity, MediaPlayerEnt
             self._send_launch_app_command(media_id)
             return
 
-        raise ValueError(f"Invalid media type: {media_type}")
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="invalid_media_type",
+            translation_placeholders={"media_type": media_type},
+        )
 
     async def async_browse_media(
         self,

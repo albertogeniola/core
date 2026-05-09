@@ -1,7 +1,5 @@
 """Event platform for Sleep as Android integration."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -38,6 +36,7 @@ class SleepAsAndroidEvent(StrEnum):
     SLEEP_PHASE = "sleep_phase"
     SLEEP_TRACKING = "sleep_tracking"
     SOUND_EVENT = "sound_event"
+    JET_LAG_PREVENTION = "jet_lag_prevention"
 
 
 EVENT_DESCRIPTIONS: tuple[SleepAsAndroidEventEntityDescription, ...] = (
@@ -119,6 +118,15 @@ EVENT_DESCRIPTIONS: tuple[SleepAsAndroidEventEntityDescription, ...] = (
             "antisnoring",
             "apnea_alarm",
         ],
+    ),
+    SleepAsAndroidEventEntityDescription(
+        key=SleepAsAndroidEvent.JET_LAG_PREVENTION,
+        translation_key=SleepAsAndroidEvent.JET_LAG_PREVENTION,
+        event_types=[
+            "jet_lag_start",
+            "jet_lag_stop",
+        ],
+        entity_registry_enabled_default=False,
     ),
 )
 

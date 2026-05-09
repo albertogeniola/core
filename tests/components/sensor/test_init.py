@@ -1,10 +1,9 @@
 """The test for sensor entity."""
 
-from __future__ import annotations
-
 from collections.abc import Generator
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+import math
 from typing import Any
 from unittest.mock import patch
 
@@ -13,6 +12,7 @@ import pytest
 from homeassistant.components import sensor
 from homeassistant.components.number import (
     AMBIGUOUS_UNITS as NUMBER_AMBIGUOUS_UNITS,
+    UNIT_CONVERTERS as NUMBER_UNIT_CONVERTERS,
     NumberDeviceClass,
 )
 from homeassistant.components.sensor import (
@@ -21,6 +21,7 @@ from homeassistant.components.sensor import (
     DEVICE_CLASS_UNITS,
     DOMAIN,
     NON_NUMERIC_DEVICE_CLASSES,
+    UPTIME_DEFAULT_TOLERANCE_SECONDS,
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
@@ -32,6 +33,7 @@ from homeassistant.components.sensor.const import STATE_CLASS_UNITS, UNIT_CONVER
 from homeassistant.config_entries import ConfigEntry, ConfigFlow
 from homeassistant.const import (
     ATTR_UNIT_OF_MEASUREMENT,
+    CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
     STATE_UNKNOWN,
     EntityCategory,
@@ -280,6 +282,44 @@ async def test_datetime_conversion(
     assert state.state == test_timestamp.isoformat()
 
 
+@pytest.mark.parametrize("drift_tolerance", [UPTIME_DEFAULT_TOLERANCE_SECONDS, 10])
+async def test_uptime_device_class_auto_normalizes_drift(
+    hass: HomeAssistant, drift_tolerance
+) -> None:
+    """Test uptime device class suppresses small drift automatically."""
+    initial_uptime = datetime(2026, 2, 14, 9, 30, tzinfo=UTC)
+    entity = MockSensor(
+        name="Test",
+        native_value=initial_uptime,
+        device_class=SensorDeviceClass.UPTIME,
+    )
+    entity._attr_uptime_drift_tolerance = drift_tolerance
+    setup_test_component_platform(hass, sensor.DOMAIN, [entity])
+
+    assert await async_setup_component(hass, "sensor", {"sensor": {"platform": "test"}})
+    await hass.async_block_till_done()
+
+    assert (state := hass.states.get(entity.entity_id))
+    assert state.state == initial_uptime.isoformat(timespec="seconds")
+
+    entity._values["native_value"] = initial_uptime + timedelta(
+        seconds=drift_tolerance - 1
+    )
+    entity.async_write_ha_state()
+    await hass.async_block_till_done()
+
+    assert (state := hass.states.get(entity.entity_id))
+    assert state.state == initial_uptime.isoformat(timespec="seconds")
+
+    updated_uptime = initial_uptime + timedelta(seconds=drift_tolerance + 1)
+    entity._values["native_value"] = updated_uptime
+    entity.async_write_ha_state()
+    await hass.async_block_till_done()
+
+    assert (state := hass.states.get(entity.entity_id))
+    assert state.state == updated_uptime.isoformat(timespec="seconds")
+
+
 async def test_a_sensor_with_a_non_numeric_device_class(
     hass: HomeAssistant,
     caplog: pytest.LogCaptureFixture,
@@ -474,6 +514,62 @@ async def test_restore_sensor_save_state(
     assert type(extra_data["native_value"]) is native_value_type
 
 
+@pytest.mark.freeze_time("2020-02-08 15:00:00")
+async def test_restore_sensor_save_state_frozen_time_datetime(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+) -> None:
+    """Test RestoreSensor."""
+    entity0 = MockRestoreSensor(
+        name="Test",
+        native_value=dt_util.utcnow(),
+        native_unit_of_measurement=None,
+        device_class=SensorDeviceClass.TIMESTAMP,
+    )
+    setup_test_component_platform(hass, sensor.DOMAIN, [entity0])
+
+    assert await async_setup_component(hass, "sensor", {"sensor": {"platform": "test"}})
+    await hass.async_block_till_done()
+
+    # Trigger saving state
+    await async_mock_restore_state_shutdown_restart(hass)
+
+    assert len(hass_storage[RESTORE_STATE_KEY]["data"]) == 1
+    state = hass_storage[RESTORE_STATE_KEY]["data"][0]["state"]
+    assert state["entity_id"] == entity0.entity_id
+    extra_data = hass_storage[RESTORE_STATE_KEY]["data"][0]["extra_data"]
+    assert extra_data == RESTORE_DATA["datetime"]
+    assert type(extra_data["native_value"]) is dict
+
+
+@pytest.mark.freeze_time("2020-02-08 15:00:00")
+async def test_restore_sensor_save_state_frozen_time_date(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+) -> None:
+    """Test RestoreSensor."""
+    entity0 = MockRestoreSensor(
+        name="Test",
+        native_value=dt_util.utcnow().date(),
+        native_unit_of_measurement=None,
+        device_class=SensorDeviceClass.DATE,
+    )
+    setup_test_component_platform(hass, sensor.DOMAIN, [entity0])
+
+    assert await async_setup_component(hass, "sensor", {"sensor": {"platform": "test"}})
+    await hass.async_block_till_done()
+
+    # Trigger saving state
+    await async_mock_restore_state_shutdown_restart(hass)
+
+    assert len(hass_storage[RESTORE_STATE_KEY]["data"]) == 1
+    state = hass_storage[RESTORE_STATE_KEY]["data"][0]["state"]
+    assert state["entity_id"] == entity0.entity_id
+    extra_data = hass_storage[RESTORE_STATE_KEY]["data"][0]["extra_data"]
+    assert extra_data == RESTORE_DATA["date"]
+    assert type(extra_data["native_value"]) is dict
+
+
 @pytest.mark.parametrize(
     ("native_value", "native_value_type", "extra_data", "device_class", "uom"),
     [
@@ -542,7 +638,7 @@ async def test_translated_unit(
     """Test translated unit."""
 
     with patch(
-        "homeassistant.helpers.service.translation.async_get_translations",
+        "homeassistant.helpers.entity_platform.translation.async_get_translations",
         return_value={
             "component.test.entity.sensor.test_translation_key.unit_of_measurement": "Tests"
         },
@@ -574,7 +670,7 @@ async def test_translated_unit_with_native_unit_raises(
     """Test that translated unit."""
 
     with patch(
-        "homeassistant.helpers.service.translation.async_get_translations",
+        "homeassistant.helpers.entity_platform.translation.async_get_translations",
         return_value={
             "component.test.entity.sensor.test_translation_key.unit_of_measurement": "Tests"
         },
@@ -605,7 +701,7 @@ async def test_unit_translation_key_without_platform_raises(
     """Test that unit translation key property raises if the entity has no platform yet."""
 
     with patch(
-        "homeassistant.helpers.service.translation.async_get_translations",
+        "homeassistant.helpers.entity_platform.translation.async_get_translations",
         return_value={
             "component.test.entity.sensor.test_translation_key.unit_of_measurement": "Tests"
         },
@@ -733,6 +829,26 @@ async def test_unit_translation_key_without_platform_raises(
             1,
         ),
         (
+            SensorDeviceClass.TEMPERATURE_DELTA,
+            UnitOfTemperature.CELSIUS,
+            UnitOfTemperature.FAHRENHEIT,
+            UnitOfTemperature.FAHRENHEIT,
+            2,
+            3.6,
+            "3.6",
+            1,
+        ),
+        (
+            SensorDeviceClass.TEMPERATURE_DELTA,
+            UnitOfTemperature.FAHRENHEIT,
+            UnitOfTemperature.CELSIUS,
+            UnitOfTemperature.CELSIUS,
+            1,
+            pytest.approx(0.555556),
+            "0.6",
+            1,
+        ),
+        (
             SensorDeviceClass.ATMOSPHERIC_PRESSURE,
             UnitOfPressure.INHG,
             UnitOfPressure.HPA,
@@ -798,7 +914,7 @@ async def test_unit_translation_key_without_platform_raises(
             UnitOfBloodGlucoseConcentration.MILLIMOLE_PER_LITER,
             UnitOfBloodGlucoseConcentration.MILLIMOLE_PER_LITER,
             130,
-            pytest.approx(7.222222),
+            pytest.approx(7.215808),
             "7.2",
             1,
         ),
@@ -1104,6 +1220,15 @@ async def test_custom_unit(
             100,
             100,
             SensorDeviceClass.WEIGHT,
+        ),
+        (
+            UnitOfTemperature.CELSIUS,
+            UnitOfTemperature.FAHRENHEIT,
+            UnitOfTemperature.FAHRENHEIT,
+            10,
+            10,
+            18,
+            SensorDeviceClass.TEMPERATURE_DELTA,
         ),
     ],
 )
@@ -1727,7 +1852,7 @@ async def test_unit_conversion_priority_suggested_unit_change_2(
             UnitOfBloodGlucoseConcentration.MILLIGRAMS_PER_DECILITER,
             0,
         ),
-        (SensorDeviceClass.CONDUCTIVITY, UnitOfConductivity.MICROSIEMENS, 1),
+        (SensorDeviceClass.CONDUCTIVITY, UnitOfConductivity.MICROSIEMENS_PER_CM, 1),
         (SensorDeviceClass.CURRENT, UnitOfElectricCurrent.MILLIAMPERE, 0),
         (SensorDeviceClass.DATA_RATE, UnitOfDataRate.KILOBITS_PER_SECOND, 0),
         (SensorDeviceClass.DATA_SIZE, UnitOfInformation.KILOBITS, 0),
@@ -1755,6 +1880,7 @@ async def test_unit_conversion_priority_suggested_unit_change_2(
         (SensorDeviceClass.SOUND_PRESSURE, UnitOfSoundPressure.DECIBEL, 0),
         (SensorDeviceClass.SPEED, UnitOfSpeed.MILLIMETERS_PER_SECOND, 0),
         (SensorDeviceClass.TEMPERATURE, UnitOfTemperature.KELVIN, 1),
+        (SensorDeviceClass.TEMPERATURE_DELTA, UnitOfTemperature.KELVIN, 1),
         (SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, 0),
         (SensorDeviceClass.VOLUME, UnitOfVolume.MILLILITERS, 0),
         (SensorDeviceClass.VOLUME_FLOW_RATE, UnitOfVolumeFlowRate.LITERS_PER_SECOND, 0),
@@ -2030,6 +2156,16 @@ def test_device_classes_aligned() -> None:
         assert getattr(SensorDeviceClass, device_class.name).value == device_class.value
 
 
+def test_unit_converters_aligned() -> None:
+    """Make sure all number unit converters are also available in sensor converters."""
+
+    assert len(NUMBER_UNIT_CONVERTERS) == len(UNIT_CONVERTERS)
+
+    for device_class, converter in NUMBER_UNIT_CONVERTERS.items():
+        assert device_class.value in UNIT_CONVERTERS
+        assert UNIT_CONVERTERS[device_class.value] == converter
+
+
 async def test_value_unknown_in_enumeration(
     hass: HomeAssistant,
     caplog: pytest.LogCaptureFixture,
@@ -2101,6 +2237,7 @@ async def test_invalid_enumeration_entity_without_device_class(
         SensorDeviceClass.DATE,
         SensorDeviceClass.ENUM,
         SensorDeviceClass.TIMESTAMP,
+        SensorDeviceClass.UPTIME,
     ],
 )
 async def test_non_numeric_device_class_with_unit_of_measurement(
@@ -2157,6 +2294,7 @@ async def test_non_numeric_device_class_with_unit_of_measurement(
         SensorDeviceClass.PM1,
         SensorDeviceClass.PM10,
         SensorDeviceClass.PM25,
+        SensorDeviceClass.PM4,
         SensorDeviceClass.POWER_FACTOR,
         SensorDeviceClass.POWER,
         SensorDeviceClass.PRECIPITATION_INTENSITY,
@@ -2169,6 +2307,7 @@ async def test_non_numeric_device_class_with_unit_of_measurement(
         SensorDeviceClass.SPEED,
         SensorDeviceClass.SULPHUR_DIOXIDE,
         SensorDeviceClass.TEMPERATURE,
+        SensorDeviceClass.TEMPERATURE_DELTA,
         SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS,
         SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS_PARTS,
         SensorDeviceClass.VOLTAGE,
@@ -2254,9 +2393,11 @@ async def test_state_classes_with_invalid_unit_of_measurement(
         (datetime(2012, 11, 10, 7, 35, 1), "non-numeric"),
         (date(2012, 11, 10), "non-numeric"),
         ("inf", "non-finite"),
-        (float("inf"), "non-finite"),
+        (math.inf, "non-finite"),
+        (float("inf"), "non-finite"),  # pylint: disable=consider-math-not-float
         ("nan", "non-finite"),
-        (float("nan"), "non-finite"),
+        (math.nan, "non-finite"),
+        (float("nan"), "non-finite"),  # pylint: disable=consider-math-not-float
     ],
 )
 async def test_non_numeric_validation_error(
@@ -2451,6 +2592,7 @@ async def test_device_classes_with_invalid_state_class(
         (SensorDeviceClass.ENUM, None, None, None, False),
         (SensorDeviceClass.DATE, None, None, None, False),
         (SensorDeviceClass.TIMESTAMP, None, None, None, False),
+        (SensorDeviceClass.UPTIME, None, None, None, False),
         ("custom", None, None, None, False),
         (SensorDeviceClass.POWER, None, "V", None, True),
         (None, SensorStateClass.MEASUREMENT, None, None, True),
@@ -2938,6 +3080,13 @@ async def test_suggested_unit_guard_invalid_unit(
             UnitOfDataRate.BITS_PER_SECOND,
             10000,
         ),
+        (
+            SensorDeviceClass.CO2,
+            CONCENTRATION_PARTS_PER_MILLION,
+            10,
+            CONCENTRATION_PARTS_PER_MILLION,
+            10,
+        ),
     ],
 )
 async def test_suggested_unit_guard_valid_unit(
@@ -2987,6 +3136,7 @@ def test_device_class_units_are_complete() -> None:
         SensorDeviceClass.ENUM,
         SensorDeviceClass.MONETARY,
         SensorDeviceClass.TIMESTAMP,
+        SensorDeviceClass.UPTIME,
     }
     unit_device_classes = {
         device_class.value for device_class in SensorDeviceClass
@@ -2999,28 +3149,24 @@ def test_device_class_converters_are_complete() -> None:
     no_converter_device_classes = {
         SensorDeviceClass.AQI,
         SensorDeviceClass.BATTERY,
-        SensorDeviceClass.CO,
         SensorDeviceClass.CO2,
         SensorDeviceClass.DATE,
         SensorDeviceClass.ENUM,
-        SensorDeviceClass.FREQUENCY,
         SensorDeviceClass.HUMIDITY,
         SensorDeviceClass.ILLUMINANCE,
         SensorDeviceClass.IRRADIANCE,
         SensorDeviceClass.MOISTURE,
         SensorDeviceClass.MONETARY,
-        SensorDeviceClass.NITROGEN_DIOXIDE,
-        SensorDeviceClass.NITROGEN_MONOXIDE,
         SensorDeviceClass.NITROUS_OXIDE,
-        SensorDeviceClass.OZONE,
         SensorDeviceClass.PH,
         SensorDeviceClass.PM1,
         SensorDeviceClass.PM10,
         SensorDeviceClass.PM25,
+        SensorDeviceClass.PM4,
         SensorDeviceClass.SIGNAL_STRENGTH,
         SensorDeviceClass.SOUND_PRESSURE,
-        SensorDeviceClass.SULPHUR_DIOXIDE,
         SensorDeviceClass.TIMESTAMP,
+        SensorDeviceClass.UPTIME,
         SensorDeviceClass.WIND_DIRECTION,
     }
     converter_device_classes = {
